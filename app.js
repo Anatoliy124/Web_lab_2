@@ -1,12 +1,9 @@
-// Массив для хранения задач
 let tasks = [];
 
-// Переменные для фильтрации и поиска
 let currentFilter = 'all';
 let currentSearch = '';
 let currentSort = 'date-asc';
 
-// Инициализация приложения при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     createPageStructure();
     initializeEventListeners();
@@ -14,22 +11,18 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTasks();
 });
 
-// Создание структуры страницы
 function createPageStructure() {
     const body = document.body;
     
-    // Создание основного контейнера
     const container = document.createElement('div');
     container.className = 'container';
     
-    // Создание заголовка
     const header = document.createElement('header');
     const title = document.createElement('h1');
     title.textContent = 'To-Do List';
     title.className = 'title';
     header.appendChild(title);
     
-    // Создание формы для добавления задач
     const form = document.createElement('form');
     form.className = 'task-form';
     form.id = 'taskForm';
@@ -59,7 +52,6 @@ function createPageStructure() {
     inputGroup.appendChild(addButton);
     form.appendChild(inputGroup);
     
-    // Создание панели управления
     const controls = document.createElement('div');
     controls.className = 'controls';
     
@@ -133,12 +125,10 @@ function createPageStructure() {
     controls.appendChild(filterGroup);
     controls.appendChild(sortGroup);
     
-    // Создание списка задач
     const taskList = document.createElement('ul');
     taskList.id = 'taskList';
     taskList.className = 'task-list';
     
-    // Сборка структуры
     container.appendChild(header);
     container.appendChild(form);
     container.appendChild(controls);
@@ -146,7 +136,6 @@ function createPageStructure() {
     body.appendChild(container);
 }
 
-// Инициализация обработчиков событий
 function initializeEventListeners() {
     const form = document.getElementById('taskForm');
     form.addEventListener('submit', handleAddTask);
@@ -161,7 +150,6 @@ function initializeEventListeners() {
     sortSelect.addEventListener('change', handleSort);
 }
 
-// Обработчик добавления задачи
 function handleAddTask(e) {
     e.preventDefault();
     
@@ -191,16 +179,12 @@ function handleAddTask(e) {
     saveTasksToStorage();
 }
 
-// Рендеринг списка задач
 function renderTasks() {
     const taskList = document.getElementById('taskList');
     taskList.innerHTML = '';
     
-    // Фильтрация и поиск
     let filteredTasks = filterTasks(tasks);
     filteredTasks = searchTasks(filteredTasks);
-    
-    // Сортировка
     filteredTasks = sortTasks(filteredTasks);
     
     if (filteredTasks.length === 0) {
@@ -216,11 +200,9 @@ function renderTasks() {
         taskList.appendChild(taskItem);
     });
     
-    // Инициализация drag-and-drop после рендеринга
     initializeDragAndDrop();
 }
 
-// Фильтрация задач по статусу
 function filterTasks(taskList) {
     if (currentFilter === 'all') {
         return taskList;
@@ -232,7 +214,6 @@ function filterTasks(taskList) {
     return taskList;
 }
 
-// Поиск задач по названию
 function searchTasks(taskList) {
     if (!currentSearch.trim()) {
         return taskList;
@@ -243,7 +224,6 @@ function searchTasks(taskList) {
     );
 }
 
-// Сортировка задач по дате
 function sortTasks(taskList) {
     const sorted = [...taskList];
     
@@ -252,13 +232,11 @@ function sortTasks(taskList) {
         const dateB = b.date ? new Date(b.date + 'T00:00:00').getTime() : 0;
         
         if (currentSort === 'date-asc') {
-            // Задачи без даты в конец
             if (!a.date && !b.date) return a.order - b.order;
             if (!a.date) return 1;
             if (!b.date) return -1;
             return dateA - dateB;
         } else if (currentSort === 'date-desc') {
-            // Задачи без даты в конец
             if (!a.date && !b.date) return a.order - b.order;
             if (!a.date) return 1;
             if (!b.date) return -1;
@@ -270,25 +248,21 @@ function sortTasks(taskList) {
     return sorted;
 }
 
-// Обработчик поиска
 function handleSearch(e) {
     currentSearch = e.target.value;
     renderTasks();
 }
 
-// Обработчик фильтрации
 function handleFilter(e) {
     currentFilter = e.target.value;
     renderTasks();
 }
 
-// Обработчик сортировки
 function handleSort(e) {
     currentSort = e.target.value;
     renderTasks();
 }
 
-// Создание элемента задачи
 function createTaskElement(task) {
     const li = document.createElement('li');
     li.className = 'task-item';
@@ -346,7 +320,6 @@ function createTaskElement(task) {
     return li;
 }
 
-// Переключение статуса выполнения задачи
 function toggleTask(id) {
     const task = tasks.find(t => t.id === id);
     if (task) {
@@ -356,14 +329,12 @@ function toggleTask(id) {
     }
 }
 
-// Удаление задачи
 function deleteTask(id) {
     tasks = tasks.filter(t => t.id !== id);
     renderTasks();
     saveTasksToStorage();
 }
 
-// Редактирование задачи
 function editTask(id) {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
@@ -383,17 +354,14 @@ function editTask(id) {
     saveTasksToStorage();
 }
 
-// Сохранение задач в localStorage
 function saveTasksToStorage() {
     localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
-// Загрузка задач из localStorage
 function loadTasksFromStorage() {
     const stored = localStorage.getItem('tasks');
     if (stored) {
         tasks = JSON.parse(stored);
-        // Восстановление порядка задач
         tasks.forEach((task, index) => {
             if (task.order === undefined) {
                 task.order = index;
@@ -402,7 +370,6 @@ function loadTasksFromStorage() {
     }
 }
 
-// Инициализация drag-and-drop
 function initializeDragAndDrop() {
     const taskList = document.getElementById('taskList');
     const taskItems = taskList.querySelectorAll('.task-item:not(.empty-state)');
@@ -488,4 +455,3 @@ function updateTaskOrder() {
     
     saveTasksToStorage();
 }
-
