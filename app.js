@@ -1,6 +1,12 @@
+// Массив для хранения задач
+let tasks = [];
+
 // Инициализация приложения при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     createPageStructure();
+    initializeEventListeners();
+    loadTasksFromStorage();
+    renderTasks();
 });
 
 // Создание структуры страницы
@@ -133,5 +139,167 @@ function createPageStructure() {
     container.appendChild(controls);
     container.appendChild(taskList);
     body.appendChild(container);
+}
+
+// Инициализация обработчиков событий
+function initializeEventListeners() {
+    const form = document.getElementById('taskForm');
+    form.addEventListener('submit', handleAddTask);
+}
+
+// Обработчик добавления задачи
+function handleAddTask(e) {
+    e.preventDefault();
+    
+    const taskInput = document.getElementById('taskInput');
+    const dateInput = document.getElementById('dateInput');
+    
+    const taskText = taskInput.value.trim();
+    const taskDate = dateInput.value;
+    
+    if (!taskText) {
+        return;
+    }
+    
+    const newTask = {
+        id: Date.now(),
+        text: taskText,
+        date: taskDate || null,
+        completed: false,
+        order: tasks.length
+    };
+    
+    tasks.push(newTask);
+    taskInput.value = '';
+    dateInput.value = '';
+    
+    renderTasks();
+    saveTasksToStorage();
+}
+
+// Рендеринг списка задач
+function renderTasks() {
+    const taskList = document.getElementById('taskList');
+    taskList.innerHTML = '';
+    
+    if (tasks.length === 0) {
+        const emptyItem = document.createElement('li');
+        emptyItem.className = 'task-item empty-state';
+        emptyItem.textContent = 'Список задач пуст';
+        taskList.appendChild(emptyItem);
+        return;
+    }
+    
+    tasks.forEach(task => {
+        const taskItem = createTaskElement(task);
+        taskList.appendChild(taskItem);
+    });
+}
+
+// Создание элемента задачи
+function createTaskElement(task) {
+    const li = document.createElement('li');
+    li.className = 'task-item';
+    li.dataset.id = task.id;
+    if (task.completed) {
+        li.classList.add('completed');
+    }
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'task-checkbox';
+    checkbox.checked = task.completed;
+    checkbox.addEventListener('change', () => toggleTask(task.id));
+    
+    const content = document.createElement('div');
+    content.className = 'task-content';
+    
+    const text = document.createElement('span');
+    text.className = 'task-text';
+    text.textContent = task.text;
+    
+    const date = document.createElement('span');
+    date.className = 'task-date';
+    if (task.date) {
+        const dateObj = new Date(task.date + 'T00:00:00');
+        date.textContent = `Дата: ${dateObj.toLocaleDateString('ru-RU')}`;
+    } else {
+        date.textContent = 'Без даты';
+    }
+    
+    content.appendChild(text);
+    content.appendChild(date);
+    
+    const actions = document.createElement('div');
+    actions.className = 'task-actions';
+    
+    const editButton = document.createElement('button');
+    editButton.className = 'edit-button';
+    editButton.textContent = 'Редактировать';
+    editButton.addEventListener('click', () => editTask(task.id));
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'delete-button';
+    deleteButton.textContent = 'Удалить';
+    deleteButton.addEventListener('click', () => deleteTask(task.id));
+    
+    actions.appendChild(editButton);
+    actions.appendChild(deleteButton);
+    
+    li.appendChild(checkbox);
+    li.appendChild(content);
+    li.appendChild(actions);
+    
+    return li;
+}
+
+// Переключение статуса выполнения задачи
+function toggleTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        task.completed = !task.completed;
+        renderTasks();
+        saveTasksToStorage();
+    }
+}
+
+// Удаление задачи
+function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    renderTasks();
+    saveTasksToStorage();
+}
+
+// Редактирование задачи
+function editTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    
+    const newText = prompt('Введите новое название задачи:', task.text);
+    if (newText === null) return;
+    
+    const newTextTrimmed = newText.trim();
+    if (!newTextTrimmed) return;
+    
+    const newDate = prompt('Введите новую дату (YYYY-MM-DD) или оставьте пустым:', task.date || '');
+    
+    task.text = newTextTrimmed;
+    task.date = newDate ? newDate : null;
+    
+    renderTasks();
+    saveTasksToStorage();
+}
+
+// Сохранение задач в localStorage
+function saveTasksToStorage() {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+}
+
+// Загрузка задач из localStorage
+function loadTasksFromStorage() {
+    const stored = localStorage.getItem('tasks');
+    if (stored) {
+        tasks = JSON.parse(stored);
+    }
 }
 
