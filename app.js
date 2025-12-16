@@ -1,6 +1,11 @@
 // Массив для хранения задач
 let tasks = [];
 
+// Переменные для фильтрации и поиска
+let currentFilter = 'all';
+let currentSearch = '';
+let currentSort = 'date-asc';
+
 // Инициализация приложения при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     createPageStructure();
@@ -145,6 +150,15 @@ function createPageStructure() {
 function initializeEventListeners() {
     const form = document.getElementById('taskForm');
     form.addEventListener('submit', handleAddTask);
+    
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', handleSearch);
+    
+    const filterSelect = document.getElementById('filterSelect');
+    filterSelect.addEventListener('change', handleFilter);
+    
+    const sortSelect = document.getElementById('sortSelect');
+    sortSelect.addEventListener('change', handleSort);
 }
 
 // Обработчик добавления задачи
@@ -182,18 +196,96 @@ function renderTasks() {
     const taskList = document.getElementById('taskList');
     taskList.innerHTML = '';
     
-    if (tasks.length === 0) {
+    // Фильтрация и поиск
+    let filteredTasks = filterTasks(tasks);
+    filteredTasks = searchTasks(filteredTasks);
+    
+    // Сортировка
+    filteredTasks = sortTasks(filteredTasks);
+    
+    if (filteredTasks.length === 0) {
         const emptyItem = document.createElement('li');
         emptyItem.className = 'task-item empty-state';
-        emptyItem.textContent = 'Список задач пуст';
+        emptyItem.textContent = tasks.length === 0 ? 'Список задач пуст' : 'Задачи не найдены';
         taskList.appendChild(emptyItem);
         return;
     }
     
-    tasks.forEach(task => {
+    filteredTasks.forEach(task => {
         const taskItem = createTaskElement(task);
         taskList.appendChild(taskItem);
     });
+    
+    // Инициализация drag-and-drop после рендеринга
+    initializeDragAndDrop();
+}
+
+// Фильтрация задач по статусу
+function filterTasks(taskList) {
+    if (currentFilter === 'all') {
+        return taskList;
+    } else if (currentFilter === 'active') {
+        return taskList.filter(task => !task.completed);
+    } else if (currentFilter === 'completed') {
+        return taskList.filter(task => task.completed);
+    }
+    return taskList;
+}
+
+// Поиск задач по названию
+function searchTasks(taskList) {
+    if (!currentSearch.trim()) {
+        return taskList;
+    }
+    const searchLower = currentSearch.toLowerCase();
+    return taskList.filter(task => 
+        task.text.toLowerCase().includes(searchLower)
+    );
+}
+
+// Сортировка задач по дате
+function sortTasks(taskList) {
+    const sorted = [...taskList];
+    
+    sorted.sort((a, b) => {
+        const dateA = a.date ? new Date(a.date + 'T00:00:00').getTime() : 0;
+        const dateB = b.date ? new Date(b.date + 'T00:00:00').getTime() : 0;
+        
+        if (currentSort === 'date-asc') {
+            // Задачи без даты в конец
+            if (!a.date && !b.date) return a.order - b.order;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return dateA - dateB;
+        } else if (currentSort === 'date-desc') {
+            // Задачи без даты в конец
+            if (!a.date && !b.date) return a.order - b.order;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return dateB - dateA;
+        }
+        return a.order - b.order;
+    });
+    
+    return sorted;
+}
+
+// Обработчик поиска
+function handleSearch(e) {
+    currentSearch = e.target.value;
+    renderTasks();
+}
+
+// Обработчик фильтрации
+function handleFilter(e) {
+    currentFilter = e.target.value;
+    renderTasks();
+}
+
+// Обработчик сортировки
+function handleSort(e) {
+    currentSort = e.target.value;
+    renderTasks();
 }
 
 // Создание элемента задачи
@@ -201,6 +293,7 @@ function createTaskElement(task) {
     const li = document.createElement('li');
     li.className = 'task-item';
     li.dataset.id = task.id;
+    li.draggable = true;
     if (task.completed) {
         li.classList.add('completed');
     }
@@ -300,6 +393,99 @@ function loadTasksFromStorage() {
     const stored = localStorage.getItem('tasks');
     if (stored) {
         tasks = JSON.parse(stored);
+        // Восстановление порядка задач
+        tasks.forEach((task, index) => {
+            if (task.order === undefined) {
+                task.order = index;
+            }
+        });
     }
+}
+
+// Инициализация drag-and-drop
+function initializeDragAndDrop() {
+    const taskList = document.getElementById('taskList');
+    const taskItems = taskList.querySelectorAll('.task-item:not(.empty-state)');
+    
+    taskItems.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('drop', handleDrop);
+        item.addEventListener('dragend', handleDragEnd);
+    });
+}
+
+let draggedElement = null;
+
+function handleDragStart(e) {
+    draggedElement = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    
+    const afterElement = getDragAfterElement(e.clientY);
+    const taskList = document.getElementById('taskList');
+    
+    if (afterElement == null) {
+        taskList.appendChild(draggedElement);
+    } else {
+        taskList.insertBefore(draggedElement, afterElement);
+    }
+    
+    return false;
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    
+    if (draggedElement !== this) {
+        updateTaskOrder();
+    }
+    
+    return false;
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    updateTaskOrder();
+}
+
+function getDragAfterElement(y) {
+    const draggableElements = [...document.querySelectorAll('.task-item:not(.dragging):not(.empty-state)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function updateTaskOrder() {
+    const taskList = document.getElementById('taskList');
+    const taskItems = taskList.querySelectorAll('.task-item:not(.empty-state)');
+    
+    taskItems.forEach((item, index) => {
+        const taskId = parseInt(item.dataset.id);
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+            task.order = index;
+        }
+    });
+    
+    saveTasksToStorage();
 }
 
