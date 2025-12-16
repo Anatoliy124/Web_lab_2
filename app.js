@@ -181,7 +181,9 @@ function handleAddTask(e) {
 
 function renderTasks() {
     const taskList = document.getElementById('taskList');
-    taskList.innerHTML = '';
+    while (taskList.firstChild) {
+        taskList.removeChild(taskList.firstChild);
+    }
     
     let filteredTasks = filterTasks(tasks);
     filteredTasks = searchTasks(filteredTasks);
@@ -388,7 +390,7 @@ function handleDragStart(e) {
     draggedElement = this;
     this.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', this.innerHTML);
+    e.dataTransfer.setData('text/plain', this.dataset.id);
 }
 
 function handleDragOver(e) {
